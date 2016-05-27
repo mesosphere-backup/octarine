@@ -1,3 +1,3 @@
 # MHProxy
 
-A simple HTTP proxy for Marathon
+A simple HTTP proxy for Mesos
