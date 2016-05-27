@@ -56,17 +56,18 @@ func (c *cache) newEntry(srv *net.SRV) entry {
 	}
 }
 
-// returns the updated values
+// Returns the updated values
 func (c *cache) update(name string) (host string, port uint16, err error) {
 	_, addrs, err := net.LookupSRV("", "", name)
 	if err != nil {
 		return "", 0, fmt.Errorf("error updating SRV cache: %s", err)
 	}
 
+	srvEntry := addrs[0]
+	host = srvEntry.Target
+	port = srvEntry.Port
 	c.recordLock.Lock()
-	c.record[name] = c.newEntry(addrs[0])
-	host = c.record[name].srv.Target
-	port = c.record[name].srv.Port
+	c.record[name] = c.newEntry(srvEntry)
 	c.recordLock.Unlock()
 	return host, port, nil
 }
