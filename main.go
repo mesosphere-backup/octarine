@@ -12,15 +12,21 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
-var dcosDomain = ".mydcos.directory"
+const dcosDomain string = ".mydcos.directory"
 
 var portno = flag.Int("port", 8080, "port to listen on")
-var updateInterval = flag.Int("update-interval", 5, "update interval in seconds")
+var cacheTimeout = flag.Int("cache-timeout", 5, "SRV record cache timeout in seconds")
 var verbose = flag.Bool("verbose", false, "verbose output")
 
-func dstDomainMatch(domain string) goproxy.ReqConditionFunc {
+func dstSuffixMatch(suffix string) goproxy.ReqConditionFunc {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
-		return strings.HasSuffix(req.URL.Host, domain)
+		return strings.HasSuffix(req.URL.Host, suffix)
+	}
+}
+
+func dstFirstCharMatch(char byte) goproxy.ReqConditionFunc {
+	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
+		return req.URL.Host[0] == char
 	}
 }
 
@@ -49,15 +55,14 @@ func createSRVHandler(srvCache srv.SRVCache) func(
 
 func main() {
 	flag.Parse()
-	srvCache := srv.New(time.Duration(*updateInterval) * time.Second)
+	srvCache := srv.New(time.Duration(*cacheTimeout) * time.Second)
+	srvHandler := createSRVHandler(srvCache)
 
 	proxy := goproxy.NewProxyHttpServer()
-	proxy.OnRequest(dstDomainMatch(dcosDomain)).DoFunc(stripDcosDomain)
-	srvHandler := createSRVHandler(srvCache)
-	proxy.OnRequest().DoFunc(srvHandler)
-	if *verbose {
-		proxy.Verbose = true
-	}
+	proxy.OnRequest(dstSuffixMatch(dcosDomain)).DoFunc(stripDcosDomain)
+	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
+	proxy.Verbose = *verbose
+
 	addr := fmt.Sprintf("127.0.0.1:%d", *portno)
 	log.Fatal(http.ListenAndServe(addr, proxy))
 }
