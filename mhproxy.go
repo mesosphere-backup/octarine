@@ -53,12 +53,29 @@ func createSRVHandler(srvCache srv.SRVCache) func(
 	}
 }
 
+func createNonProxyHandler(proxy *goproxy.ProxyHttpServer,
+	trafficType string) func(w http.ResponseWriter, req *http.Request) {
+
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Host == "" {
+			msg := "Cannot handle requests without Host header, e.g., HTTP 1.0"
+			fmt.Fprintln(w, msg)
+			return
+		}
+		req.URL.Scheme = trafficType
+		req.URL.Host = req.Host
+		proxy.ServeHTTP(w, req)
+	}
+}
+
 func main() {
 	flag.Parse()
 	srvCache := srv.New(time.Duration(*cacheTimeout) * time.Second)
 	srvHandler := createSRVHandler(srvCache)
 
 	proxy := goproxy.NewProxyHttpServer()
+	httpProxifier := createNonProxyHandler(proxy, "http")
+	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
 	proxy.OnRequest(dstSuffixMatch(dcosDomain)).DoFunc(stripDcosDomain)
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
 	proxy.Verbose = *verbose
