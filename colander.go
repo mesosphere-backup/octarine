@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dcos/mhproxy/srv"
+	"github.com/dcos/colander/srv"
 	"github.com/elazarl/goproxy"
 )
 

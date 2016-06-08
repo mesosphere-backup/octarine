@@ -1,3 +1,3 @@
-# MHProxy
+# Colander
 
-A simple HTTP proxy for Mesos
+A transparent HTTP proxy
