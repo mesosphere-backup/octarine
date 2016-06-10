@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/dcos/colander/util"
+	"github.com/dcos/octarine/util"
 )
 
 type Client struct {

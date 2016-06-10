@@ -7,8 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/dcos/colander/client"
-	"github.com/dcos/colander/server"
+	"github.com/dcos/octarine/client"
+	"github.com/dcos/octarine/server"
 )
 
 var cacheTimeout = flag.Int("cache-timeout", 5,
@@ -23,7 +23,7 @@ var queryPort = flag.Bool("port", false,
 func main() {
 	flag.Parse()
 
-	sockdir := path.Join(os.TempDir(), "colander")
+	sockdir := path.Join(os.TempDir(), "octarine")
 
 	id := flag.Arg(0)
 	if id == "" {

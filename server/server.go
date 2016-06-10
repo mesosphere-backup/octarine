@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dcos/colander/srv"
-	"github.com/dcos/colander/util"
+	"github.com/dcos/octarine/srv"
+	"github.com/dcos/octarine/util"
 	"github.com/elazarl/goproxy"
 )
 
