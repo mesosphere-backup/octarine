@@ -4,82 +4,56 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
-	"strings"
-	"time"
+	"os"
+	"path"
 
-	"github.com/dcos/colander/srv"
-	"github.com/elazarl/goproxy"
+	"github.com/dcos/colander/client"
+	"github.com/dcos/colander/server"
 )
 
-const dcosDomain string = ".mydcos.directory"
+var cacheTimeout = flag.Int("cache-timeout", 5,
+	"SRV record cache timeout in seconds.")
+var verbose = flag.Bool("verbose", false, "Verbose output.")
+var cmode = flag.Bool("client", false, "Client mode.")
 
-var portno = flag.Int("port", 8080, "port to listen on")
-var cacheTimeout = flag.Int("cache-timeout", 5, "SRV record cache timeout in seconds")
-var verbose = flag.Bool("verbose", false, "verbose output")
-
-func dstSuffixMatch(suffix string) goproxy.ReqConditionFunc {
-	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
-		return strings.HasSuffix(req.URL.Host, suffix)
-	}
-}
-
-func dstFirstCharMatch(char byte) goproxy.ReqConditionFunc {
-	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
-		return req.URL.Host[0] == char
-	}
-}
-
-func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
-	*http.Request, *http.Response) {
-
-	r.URL.Host = strings.TrimSuffix(r.URL.Host, dcosDomain)
-	return r, nil
-}
-
-func createSRVHandler(srvCache srv.SRVCache) func(
-	r *http.Request, ctx *goproxy.ProxyCtx) (
-	*http.Request, *http.Response) {
-
-	return func(r *http.Request, ctx *goproxy.ProxyCtx) (
-		*http.Request, *http.Response) {
-
-		if host, port, err := srvCache.Get(r.URL.Host); err != nil {
-			log.Print(err)
-		} else {
-			r.URL.Host = fmt.Sprintf("%s:%d", host, port)
-		}
-		return r, nil
-	}
-}
-
-func createNonProxyHandler(proxy *goproxy.ProxyHttpServer,
-	trafficType string) func(w http.ResponseWriter, req *http.Request) {
-
-	return func(w http.ResponseWriter, req *http.Request) {
-		if req.Host == "" {
-			msg := "Cannot handle requests without Host header, e.g., HTTP 1.0"
-			fmt.Fprintln(w, msg)
-			return
-		}
-		req.URL.Scheme = trafficType
-		req.URL.Host = req.Host
-		proxy.ServeHTTP(w, req)
-	}
-}
+// Below requires client mode
+var queryPort = flag.Bool("port", false,
+	"Query the port that's being listened on, only available in client mode.")
 
 func main() {
 	flag.Parse()
-	srvCache := srv.New(time.Duration(*cacheTimeout) * time.Second)
-	srvHandler := createSRVHandler(srvCache)
 
-	proxy := goproxy.NewProxyHttpServer()
-	httpProxifier := createNonProxyHandler(proxy, "http")
-	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
-	proxy.OnRequest(dstSuffixMatch(dcosDomain)).DoFunc(stripDcosDomain)
-	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
-	proxy.Verbose = *verbose
+	sockdir := path.Join(os.TempDir(), "colander")
 
-	addr := fmt.Sprintf("127.0.0.1:%d", *portno)
-	log.Fatal(http.ListenAndServe(addr, proxy))
+	id := flag.Arg(0)
+	if id == "" {
+		log.Print("Please supply an identifier for this proxy instance")
+		os.Exit(1)
+	}
+
+	querysock := path.Join(sockdir, fmt.Sprintf("%s.query.sock", id))
+	portsock := path.Join(sockdir, fmt.Sprintf("%s.port.sock", id))
+	if err := os.MkdirAll(sockdir, os.FileMode(0700)); err != nil {
+		log.Fatal(err)
+	}
+
+	if *cmode {
+		c := &client.Client{
+			ID:         id,
+			QueryPort:  *queryPort,
+			ListenSock: portsock,
+			WriteSock:  querysock,
+		}
+		c.Run()
+		os.Exit(0)
+	}
+
+	s := &server.Server{
+		ID:           id,
+		Verbose:      *verbose,
+		CacheTimeout: *cacheTimeout,
+		ListenSock:   querysock,
+		WriteSock:    portsock,
+	}
+	log.Fatal(s.Run())
 }
