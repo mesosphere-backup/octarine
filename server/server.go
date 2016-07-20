@@ -13,6 +13,7 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+// Server stores the server configuration
 type Server struct {
 	ID           string
 	Verbose      bool
@@ -23,6 +24,7 @@ type Server struct {
 	port string
 }
 
+// Run starts the server
 func (sv *Server) Run() error {
 	srvCache := srv.New(time.Duration(sv.CacheTimeout) * time.Second)
 	srvHandler := createSRVHandler(srvCache)
@@ -70,14 +72,14 @@ func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
 	return r, nil
 }
 
-func createSRVHandler(srvCache srv.SRVCache) func(
+func createSRVHandler(Cache srv.Cache) func(
 	r *http.Request, ctx *goproxy.ProxyCtx) (
 	*http.Request, *http.Response) {
 
 	return func(r *http.Request, ctx *goproxy.ProxyCtx) (
 		*http.Request, *http.Response) {
 
-		if host, port, err := srvCache.Get(r.URL.Host); err != nil {
+		if host, port, err := Cache.Get(r.URL.Host); err != nil {
 			log.Print(err)
 		} else {
 			r.URL.Host = fmt.Sprintf("%s:%d", host, port)

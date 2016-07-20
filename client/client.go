@@ -9,6 +9,7 @@ import (
 	"github.com/dcos/octarine/util"
 )
 
+// Client stores the client configuration
 type Client struct {
 	ID         string
 	ListenSock string
@@ -16,6 +17,7 @@ type Client struct {
 	QueryPort  bool
 }
 
+// Run starts the client
 func (ct *Client) Run() {
 	if ct.QueryPort {
 		ct.queryPort()

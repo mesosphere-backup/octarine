@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-type SRVCache interface {
+// Cache stores the results of successful SRV record queries.
+type Cache interface {
 	Get(name string) (host string, port uint16, err error)
 }
 
@@ -22,7 +23,8 @@ type cache struct {
 	recordLock *sync.Mutex
 }
 
-func New(duration time.Duration) SRVCache {
+// New returns a new cache.
+func New(duration time.Duration) Cache {
 	c := &cache{
 		duration:   duration,
 		record:     make(map[string]entry),
