@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dcos/octarine/srv"
@@ -31,6 +32,7 @@ func (sv *Server) Run() error {
 	proxy := goproxy.NewProxyHttpServer()
 	httpProxifier := createNonProxyHandler(proxy, "http")
 	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
+	proxy.OnRequest(dstSuffixMatch(util.DcosDomain)).DoFunc(stripDcosDomain)
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
 	proxy.Verbose = sv.Verbose
 
@@ -51,10 +53,23 @@ func (sv *Server) Run() error {
 	return s.Serve(netl)
 }
 
+func dstSuffixMatch(suffix string) goproxy.ReqConditionFunc {
+	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
+		return strings.HasSuffix(req.URL.Host, suffix)
+	}
+}
+
 func dstFirstCharMatch(char byte) goproxy.ReqConditionFunc {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
 		return req.URL.Host[0] == char
 	}
+}
+
+func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
+	*http.Request, *http.Response) {
+
+	r.URL.Host = strings.TrimSuffix(r.URL.Host, util.DcosDomain)
+	return r, nil
 }
 
 func createSRVHandler(Cache srv.Cache) func(
