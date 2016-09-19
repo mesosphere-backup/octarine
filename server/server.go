@@ -32,7 +32,6 @@ func (sv *Server) Run() error {
 	proxy := goproxy.NewProxyHttpServer()
 	httpProxifier := createNonProxyHandler(proxy, "http")
 	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
-	proxy.OnRequest(dstSuffixMatch(util.DcosDomain)).DoFunc(stripDcosDomain)
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
 	proxy.Verbose = sv.Verbose
 
@@ -65,13 +64,6 @@ func dstFirstCharMatch(char byte) goproxy.ReqConditionFunc {
 	}
 }
 
-func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
-	*http.Request, *http.Response) {
-
-	r.URL.Host = strings.TrimSuffix(r.URL.Host, util.DcosDomain)
-	return r, nil
-}
-
 func createSRVHandler(Cache srv.Cache) func(
 	r *http.Request, ctx *goproxy.ProxyCtx) (
 	*http.Request, *http.Response) {
@@ -79,7 +71,8 @@ func createSRVHandler(Cache srv.Cache) func(
 	return func(r *http.Request, ctx *goproxy.ProxyCtx) (
 		*http.Request, *http.Response) {
 
-		if host, port, err := Cache.Get(r.URL.Host); err != nil {
+		parsedHost := strings.TrimSuffix(r.URL.Host, util.DcosDomain)
+		if host, port, err := Cache.Get(parsedHost); err != nil {
 			log.Print(err)
 		} else {
 			r.URL.Host = fmt.Sprintf("%s:%d", host, port)
