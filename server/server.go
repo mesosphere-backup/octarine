@@ -64,7 +64,7 @@ func dstFirstCharMatch(char byte) goproxy.ReqConditionFunc {
 	}
 }
 
-func createSRVHandler(Cache srv.Cache) func(
+func createSRVHandler(cache srv.Cache) func(
 	r *http.Request, ctx *goproxy.ProxyCtx) (
 	*http.Request, *http.Response) {
 
@@ -72,7 +72,7 @@ func createSRVHandler(Cache srv.Cache) func(
 		*http.Request, *http.Response) {
 
 		parsedHost := strings.TrimSuffix(r.URL.Host, util.DcosDomain)
-		if host, port, err := Cache.Get(parsedHost); err != nil {
+		if host, port, err := cache.Get(parsedHost); err != nil {
 			log.Print(err)
 		} else {
 			r.URL.Host = fmt.Sprintf("%s:%d", host, port)
