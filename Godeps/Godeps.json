@@ -1,0 +1,12 @@
+{
+	"ImportPath": "github.com/dcos/octarine",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/elazarl/goproxy",
+			"Comment": "v1.0-94-gde25c6e",
+			"Rev": "de25c6ed252fdc01e23dae49d6a86742bd790b12"
+		}
+	]
+}
