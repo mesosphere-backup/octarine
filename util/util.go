@@ -7,7 +7,7 @@ import (
 // Version is just for indicating breaking changes.
 //
 // This is used by frontend applications to determine compatibility.
-const Version int = 1
+const Version int = 2
 
 // DcosDomain is the domain that identifies a request as one that should
 // be processed.

@@ -24,6 +24,7 @@ var cmode = flag.Bool("client", false, "Client mode.")
 var proxyMode = flag.String("mode", "",
 	fmt.Sprintf("Proxy mode [%s/%s]", server.StandardMode, server.TransparentMode))
 var printVersion = flag.Bool("version", false, "Print the version")
+var bindPort = flag.Int("bindPort", 0, "Port to bind on")
 
 // Below requires client mode
 var queryPort = flag.Bool("port", false,
@@ -78,5 +79,5 @@ func main() {
 		WriteSock:    portsock,
 		ProxyMode:    *proxyMode,
 	}
-	log.Fatal(s.Run())
+	log.Fatal(s.Run(*bindPort))
 }

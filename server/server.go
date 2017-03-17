@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ func ValidProxyMode(mode string) bool {
 }
 
 // Run starts the server
-func (sv *Server) Run() error {
+func (sv *Server) Run(inputPort int) error {
 	srvCache := srv.New(time.Duration(sv.CacheTimeout) * time.Second)
 	srvHandler := createSRVHandler(srvCache)
 
@@ -59,7 +60,7 @@ func (sv *Server) Run() error {
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
 	proxy.Verbose = sv.Verbose
 
-	netl, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", "0"))
+	netl, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(inputPort)))
 	if err != nil {
 		return err
 	}
