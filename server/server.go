@@ -55,6 +55,7 @@ func (sv *Server) Run(inputPort int) error {
 	httpProxifier := createNonProxyHandler(proxy, "http")
 	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
 	if sv.ProxyMode == TransparentMode {
+		proxy.OnRequest(dstHasPort()).DoFunc(stripPort)
 		proxy.OnRequest(dstSuffixMatch(util.DcosDomain)).DoFunc(stripDcosDomain)
 	}
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
@@ -84,9 +85,22 @@ func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
 	return r, nil
 }
 
+func stripPort(r *http.Request, ctx *goproxy.ProxyCtx) (
+	*http.Request, *http.Response) {
+
+	r.URL.Host = strings.Split(r.URL.Host, ":")[0]
+	return r, nil
+}
+
 func dstSuffixMatch(suffix string) goproxy.ReqConditionFunc {
 	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
 		return strings.HasSuffix(req.URL.Host, suffix)
+	}
+}
+
+func dstHasPort() goproxy.ReqConditionFunc {
+	return func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
+		return strings.Index(req.URL.Host, ":") != -1
 	}
 }
 
