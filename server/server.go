@@ -13,6 +13,15 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
+// StandardMode indicates standard forward proxy behavior
+var StandardMode = "standard"
+
+// TransparentMode indicates transparent forward proxy behavior
+var TransparentMode = "transparent"
+
+// ProxyModes is a slice of all proxy modes
+var ProxyModes = []string{StandardMode, TransparentMode}
+
 // Server stores the server configuration
 type Server struct {
 	ID           string
@@ -20,8 +29,20 @@ type Server struct {
 	CacheTimeout int
 	ListenSock   string
 	WriteSock    string
+	ProxyMode    string
 
 	port string
+}
+
+// ValidProxyMode returns true if the mode is a valid proxy mode, false
+// otherwise.
+func ValidProxyMode(mode string) bool {
+	for _, m := range ProxyModes {
+		if m == mode {
+			return true
+		}
+	}
+	return false
 }
 
 // Run starts the server
@@ -32,6 +53,9 @@ func (sv *Server) Run() error {
 	proxy := goproxy.NewProxyHttpServer()
 	httpProxifier := createNonProxyHandler(proxy, "http")
 	proxy.NonproxyHandler = http.HandlerFunc(httpProxifier)
+	if sv.ProxyMode == TransparentMode {
+		proxy.OnRequest(dstSuffixMatch(util.DcosDomain)).DoFunc(stripDcosDomain)
+	}
 	proxy.OnRequest(dstFirstCharMatch("_"[0])).DoFunc(srvHandler)
 	proxy.Verbose = sv.Verbose
 
@@ -50,6 +74,13 @@ func (sv *Server) Run() error {
 
 	go sv.runListener()
 	return s.Serve(netl)
+}
+
+func stripDcosDomain(r *http.Request, ctx *goproxy.ProxyCtx) (
+	*http.Request, *http.Response) {
+
+	r.URL.Host = strings.TrimSuffix(r.URL.Host, util.DcosDomain)
+	return r, nil
 }
 
 func dstSuffixMatch(suffix string) goproxy.ReqConditionFunc {
@@ -71,8 +102,7 @@ func createSRVHandler(cache srv.Cache) func(
 	return func(r *http.Request, ctx *goproxy.ProxyCtx) (
 		*http.Request, *http.Response) {
 
-		parsedHost := strings.TrimSuffix(r.URL.Host, util.DcosDomain)
-		if host, port, err := cache.Get(parsedHost); err != nil {
+		if host, port, err := cache.Get(r.URL.Host); err != nil {
 			log.Print(err)
 		} else {
 			r.URL.Host = fmt.Sprintf("%s:%d", host, port)
